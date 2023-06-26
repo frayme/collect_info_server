@@ -2,10 +2,12 @@
 import platform
 import psutil
 import os
+import socket
 import pwd
 import argparse
 import subprocess
 import yaml
+import sys
 
 parser = argparse.ArgumentParser(description='This script collecting data about server')
 parser.add_argument('--users', action='store_true', help="Collecting informathion about users")
@@ -15,14 +17,16 @@ parser.add_argument('--limits', action='store_true', help="Collecting informatio
 parser.add_argument('--kernel', action='store_true', help="Collecting information about kernel settings")
 parser.add_argument('--mount', action='store_true', help="Collecting information about mount point")
 parser.add_argument('--packages', action='store_true', help="Collecting information about installed packages")
-parser.add_argument('--cpuinfo', action='store_true', help="Collecting information about cpu")
-parser.add_argument('--mem', action='store_true', help="Collecting information about memory")
-parser.add_argument('--disks', action='store_true', help="Collecting information about disks")
+parser.add_argument('--hardware', action='store_true', help="Collecting information about cpu,mem,disks")
 parser.add_argument('--hosts', action='store_true', help="Collecting information from hosts file")
 parser.add_argument('--sudoers', action='store_true', help="Collecting information about sudo rights")
 parser.add_argument('--domain_info', action='store_true', help="Collecting information about domain settings")
 
 args = parser.parse_args()
+print(psutil.path)
+print(yaml.path)
+
+path="/home/user/"
 
 # getting users information
 def info_users():
@@ -32,7 +36,7 @@ def info_users():
         print("[+] User: ", user.pw_name, user.pw_passwd, user.pw_shell, user.pw_uid, user.pw_gid, user.pw_dir )
     print("\n")
     print("\n\t\t\t Genering Users yaml \n")
-    with open("/home/user/info/users.yml", "w") as fw:
+    with open(path + hostname + "/users.yml", "w") as fw:
         user_yml = {
                     "Users": []
         }
@@ -50,22 +54,31 @@ def info_users():
                 })
         yaml.dump(user_yml, fw, sort_keys=False, default_flow_style=False)
 
+    def listdirs(path_dir):
+        sys.stdout = open(path + hostname + "/struct_home_dir.txt", "w")
+        for dirpath, dirnames, filenames in os.walk(path_dir):
+    # перебрать каталоги
+            for dirname in dirnames:
+                print("Каталог:", os.path.join(dirpath, dirname))
+    # перебрать файлы
+            for filename in filenames:
+                print("Файл:", os.path.join(dirpath, filename))
+    listdirs("/home/")
+    
+
 # getting name units
 def info_units():
     print("\n\t\t\t Units Information\n")
-    path = "/home/user/info/units/"
-    os.system("mkdir -p " + path)
+    path_units = path + hostname + "/units/"
+    os.system("mkdir -p " + path_units)
     units = subprocess.check_output("systemctl list-units --type=service | awk '{print $1}'", shell=True)
     s = ''.join(map(chr, units))
     str = s.split("\n")
     str = str[1:-7] # Убираем ненужные строки
     print(str)
     for i in str:
-        #if "device" or "mount" in i:
-        #    continue
-        print(i)
-        with open (path + i, "w") as fw:
-            print(path + i)
+        with open (path_units + i, "w") as fw:
+            print(path_units + i)
             units_settings =  subprocess.check_output("systemctl cat " + i, shell=True)
             d = ''.join(map(chr, units_settings))
             fw.write(d)
@@ -76,15 +89,24 @@ def info_units():
 # getting the name of processes currently running
 def info_proc():
     print("\n\t\t\t Process Information\n")
-    for proc in psutil.process_iter(['name']):
-        print("[+] Process: ", proc.info['name'])
+    with open(path + hostname + "/process.yml", "w") as fw:
+        process_yml = {
+            "Process": []
+        }
+        for proc in psutil.process_iter(['name']):
+            process_yml["Process"].append( {
+                    "Name" : proc.info['name']
+                }
+                    )
+        yaml.dump(process_yml, fw, sort_keys=False, default_flow_style=False)
+            #print("[+] Process: ", proc.info['name'])
 
 # getting limits value
 def info_limits():
     print("\n\t\t\t Limits Information\n")
     with open('/etc/security/limits.conf', 'r') as l:
         file_info = l.readlines()
-    with open("/home/user/info/limit.yml", "w") as fw:
+    with open(path + hostname + "/limit.yml", "w") as fw:
         limit_yml = {
             "limit": {},
             "limitd" : []
@@ -113,7 +135,7 @@ def info_kernel():
     print("\n\t\t\t Kernel Information\n")
     with open('/etc/sysctl.conf', 'r') as l:
         file_info = l.readlines()
-    with open("/home/user/info/kernel.yml", "w") as fw:
+    with open(path + hostname + "/kernel.yml", "w") as fw:
         kernel_yml = {
             "kernel": {},
             "kerneld" : []
@@ -145,7 +167,7 @@ def info_mount():
     print("\n\t\t\t fstab Information\n")
     with open('/etc/fstab', 'r') as l:
         file_info = l.readlines()
-    with open("/home/user/info/fstab.yml", "w") as fw:
+    with open(path + hostname + "/fstab.yml", "w") as fw:
         mount_yml = {
             "Mount": []
         }
@@ -163,7 +185,7 @@ def info_hosts():
     print("\n\t\t\t Hosts Information\n")
     with open('/etc/hosts', 'r') as l:
         file_info = l.readlines()
-    with open("/home/user/info/hosts.yml", "w") as fw:
+    with open(path + hostname + "/hosts.yml", "w") as fw:
         hosts_yml = {
             "Hosts": []
         }
@@ -182,7 +204,7 @@ def info_sudo():
     print("\n\t\t\t Sudo rights Information\n")
     with open('/etc/sudoers', 'r') as l:
         file_info = l.readlines()
-    with open("/home/user/info/sudoers.yml", "w") as fw:
+    with open(path + hostname + "/sudoers.yml", "w") as fw:
         sudo_yml = {
             "Sudo": {},
             "Sudod" : []
@@ -214,7 +236,7 @@ def info_sudo():
 # Displaying installed packages
 def info_packages():
     print("\n\t\t\t Packages Information\n")
-    with open("/home/user/info/package.yml", "w") as fw:
+    with open(path + hostname + "/package.yml", "w") as fw:
         package_yml = {
                     "Package": []
         }
@@ -258,101 +280,108 @@ def info_domain():
         permited_group = subprocess.check_output("/opt/pbis/bin/config --detail RequireMembershipOf")
         print(permited_group)
 
-def info_cpu():
-# Displaying The CPU information
-    print("\n\t\t\t CPU Information\n")
+def info_hardware():
+    # First We will print the basic system information
+    # using the platform module
+    sys.stdout = open(path + hostname + "/hardware.txt", "w")
+    def info_cpu():
+    # Displaying The CPU information
+        print("\n\t\t\t CPU Information\n")
 
-# This code will print the number of CPU cores present
-    print("[+] Number of Physical cores :", psutil.cpu_count(logical=False))
-    print("[+] Number of Total cores :", psutil.cpu_count(logical=True))
-    print("\n")
-
-# This will print the maximum, minimum and current CPU frequency
-    cpu_frequency = psutil.cpu_freq()
-    print(f"[+] Max Frequency : {cpu_frequency.max:.2f}Mhz")
-    print(f"[+] Min Frequency : {cpu_frequency.min:.2f}Mhz")
-    print(f"[+] Current Frequency : {cpu_frequency.current:.2f}Mhz")
-    print("\n")
-
-# This will print the usage of CPU per core
-    for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
-        print(f"[+] CPU Usage of Core {i} : {percentage}%")
-    print(f"[+] Total CPU Usage : {psutil.cpu_percent()}%")
-
-
-# reading the cpuinfo file to print the name of
-# the CPU present
-    with open("/proc/cpuinfo", "r")  as f:
-        file_info = f.readlines()
-
-    cpuinfo = [x.strip().split(":")[1] for x in file_info if "model name"  in x]
-    for index, item in enumerate(cpuinfo):
-        print("[+] Processor " + str(index) + " : " + item)
-
-def info_mem():
-# Using the virtual_memory() function it will return a tuple
-    virtual_memory = psutil.virtual_memory()
-    print("\n\t\t\t Memory Information\n")
-#This will print the primary memory details
-    print("[+] Total Memory present :", bytes_to_GB(virtual_memory.total), "Gb")
-    print("[+] Total Memory Available :", bytes_to_GB(virtual_memory.available), "Gb")
-    print("[+] Total Memory Used :", bytes_to_GB(virtual_memory.used), "Gb")
-    print("[+] Percentage Used :", virtual_memory.percent, "%")
-    print("\n")
-
-# This will print the swap memory details if available
-    swap = psutil.swap_memory()
-    print(f"[+] Total swap memory :{bytes_to_GB(swap.total)}")
-    print(f"[+] Free swap memory : {bytes_to_GB(swap.free)}")
-    print(f"[+] Used swap memory : {bytes_to_GB(swap.used)}")
-    print(f"[+] Percentage Used: {swap.percent}%")
-
-# Gathering memory information from meminfo file
-    print("\nReading the /proc/meminfo file: \n")
-    with open("/proc/meminfo", "r") as f:
-        lines = f.readlines()
-
-    print("[+] " + lines[0].strip())
-    print("[+] " + lines[1].strip())
-
-def bytes_to_GB(bytes):
-        gb = bytes/(1024*1024*1024)
-        gb = round(gb, 2)
-        return gb
-
-def info_disk():
-# accessing all the disk partitions
-    disk_partitions = psutil.disk_partitions()
-    print("\n\t\t\t Disk Information\n")
-
-# displaying the partition and usage information
-    for partition in disk_partitions:
-        print("[+] Partition Device : ", partition.device)
-        print("[+] File System : ", partition.fstype)
-        print("[+] Mountpoint : ", partition.mountpoint)
-
-        disk_usage = psutil.disk_usage(partition.mountpoint)
-        print("[+] Total Disk Space :", bytes_to_GB(disk_usage.total), "GB")
-        print("[+] Free Disk Space :", bytes_to_GB(disk_usage.free), "GB")
-        print("[+] Used Disk Space :", bytes_to_GB(disk_usage.used), "GB")
-        print("[+] Percentage Used :", disk_usage.percent, "%")
+    # This code will print the number of CPU cores present
+        print("[+] Number of Physical cores :", psutil.cpu_count(logical=False))
+        print("[+] Number of Total cores :", psutil.cpu_count(logical=True))
         print("\n")
 
-# First We will print the basic system information
-# using the platform module
-print("\n\t\t\t Basic System Information\n")
+    # This will print the maximum, minimum and current CPU frequency
+        cpu_frequency = psutil.cpu_freq()
+        print(f"[+] Max Frequency : {cpu_frequency.max:.2f}Mhz")
+        print(f"[+] Min Frequency : {cpu_frequency.min:.2f}Mhz")
+        print(f"[+] Current Frequency : {cpu_frequency.current:.2f}Mhz")
+        print("\n")
 
-print("[+] Architecture :", platform.architecture()[0])
-print("[+] Machine :", platform.machine())
-print("[+] Operating System Release :", platform.release())
-print("[+] System Name :",platform.system())
-print("[+] Operating System Version :", platform.version())
-print("[+] Node: " + platform.node())
-print("[+] Platform :", platform.platform())
-print("[+] Processor :",platform.processor())
-print("\n")
+    # This will print the usage of CPU per core
+        for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
+            print(f"[+] CPU Usage of Core {i} : {percentage}%")
+        print(f"[+] Total CPU Usage : {psutil.cpu_percent()}%")
 
-os.system("mkdir -p /home/user/info/")
+
+    # reading the cpuinfo file to print the name of
+    # the CPU present
+        with open("/proc/cpuinfo", "r")  as f:
+            file_info = f.readlines()
+
+        cpuinfo = [x.strip().split(":")[1] for x in file_info if "model name"  in x]
+        for index, item in enumerate(cpuinfo):
+            print("[+] Processor " + str(index) + " : " + item)
+
+    def info_mem():
+    # Using the virtual_memory() function it will return a tuple
+        virtual_memory = psutil.virtual_memory()
+        print("\n\t\t\t Memory Information\n")
+    #This will print the primary memory details
+        print("[+] Total Memory present :", bytes_to_GB(virtual_memory.total), "Gb")
+        print("[+] Total Memory Available :", bytes_to_GB(virtual_memory.available), "Gb")
+        print("[+] Total Memory Used :", bytes_to_GB(virtual_memory.used), "Gb")
+        print("[+] Percentage Used :", virtual_memory.percent, "%")
+        print("\n")
+
+    # This will print the swap memory details if available
+        swap = psutil.swap_memory()
+        print(f"[+] Total swap memory :{bytes_to_GB(swap.total)}")
+        print(f"[+] Free swap memory : {bytes_to_GB(swap.free)}")
+        print(f"[+] Used swap memory : {bytes_to_GB(swap.used)}")
+        print(f"[+] Percentage Used: {swap.percent}%")
+
+    # Gathering memory information from meminfo file
+        print("\nReading the /proc/meminfo file: \n")
+        with open("/proc/meminfo", "r") as f:
+            lines = f.readlines()
+
+        print("[+] " + lines[0].strip())
+        print("[+] " + lines[1].strip())
+
+    def bytes_to_GB(bytes):
+            gb = bytes/(1024*1024*1024)
+            gb = round(gb, 2)
+            return gb
+
+    def info_disk():
+    # accessing all the disk partitions
+        disk_partitions = psutil.disk_partitions()
+        print("\n\t\t\t Disk Information\n")
+
+    # displaying the partition and usage information
+        for partition in disk_partitions:
+            print("[+] Partition Device : ", partition.device)
+            print("[+] File System : ", partition.fstype)
+            print("[+] Mountpoint : ", partition.mountpoint)
+
+            disk_usage = psutil.disk_usage(partition.mountpoint)
+            print("[+] Total Disk Space :", bytes_to_GB(disk_usage.total), "GB")
+            print("[+] Free Disk Space :", bytes_to_GB(disk_usage.free), "GB")
+            print("[+] Used Disk Space :", bytes_to_GB(disk_usage.used), "GB")
+            print("[+] Percentage Used :", disk_usage.percent, "%")
+            print("\n")
+
+#    with open(path + hostname + "/hardware", "w") as fw:
+    print("\n\t\t\t Basic System Information\n")
+
+    print("[+] Architecture :", platform.architecture()[0])
+    print("[+] Machine :", platform.machine())
+    print("[+] Operating System Release :", platform.release())
+    print("[+] System Name :",platform.system())
+    print("[+] Operating System Version :", platform.version())
+    print("[+] Node: " + platform.node())
+    print("[+] Platform :", platform.platform())
+    print("[+] Processor :",platform.processor())
+    print("\n")
+    info_cpu()
+    info_mem()
+    info_disk()
+
+hostname = socket.gethostname()
+os.system("mkdir -p /home/user/" + hostname)
 if args.users:
     info_users()
 if args.units:
@@ -373,13 +402,10 @@ if args.sudoers:
     info_sudo()
 if args.domain_info: # Доделать
     info_domain()
-if args.cpuinfo: # Только принты
-    info_cpu()
-if args.mem: # Только принты
-    info_mem()
-if args.disks: # Только принты
-    info_disk()
-if not args.users and not args.units and not args.packages and not args.proc and not args.limits and not args.kernel and not args.mount and not args.hosts and not args.sudoers and not args.domain_info and not args.cpuinfo and not args.mem and not args.disks:
+if args.hardware:
+    info_hardware()
+
+if not args.users and not args.units and not args.packages and not args.proc and not args.limits and not args.kernel and not args.mount and not args.hosts and not args.sudoers and not args.domain_info and not args.hardware:
     info_users()
     info_units()
     info_packages()
@@ -389,3 +415,4 @@ if not args.users and not args.units and not args.packages and not args.proc and
     info_mount()
     info_hosts()
     info_sudo()
+    info_hardware()
