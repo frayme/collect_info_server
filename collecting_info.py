@@ -6,7 +6,7 @@ import socket
 import pwd
 import argparse
 import subprocess
-import yaml
+import json
 import sys
 
 parser = argparse.ArgumentParser(description='This script collecting data about server')
@@ -23,9 +23,6 @@ parser.add_argument('--sudoers', action='store_true', help="Collecting informati
 parser.add_argument('--domain_info', action='store_true', help="Collecting information about domain settings")
 
 args = parser.parse_args()
-print(psutil.path)
-print(yaml.path)
-
 path="/home/user/"
 
 # getting users information
@@ -35,15 +32,15 @@ def info_users():
     for user in users:
         print("[+] User: ", user.pw_name, user.pw_passwd, user.pw_shell, user.pw_uid, user.pw_gid, user.pw_dir )
     print("\n")
-    print("\n\t\t\t Genering Users yaml \n")
-    with open(path + hostname + "/users.yml", "w") as fw:
-        user_yml = {
+    print("\n\t\t\t Genering Users json \n")
+    with open(path + hostname + "/users.js", "w") as fw:
+        user_js = {
                     "Users": []
         }
         for user in users:
             #if user.pw_uid > 500:
             username = user.pw_name
-            user_yml["Users"].append( {
+            user_js["Users"].append( {
                     username: {
                         'user_name' : user.pw_name,
                         'user_shell' : user.pw_shell,
@@ -52,7 +49,7 @@ def info_users():
                         'user_dir' : user.pw_dir,
                         }
                 })
-        yaml.dump(user_yml, fw, sort_keys=False, default_flow_style=False)
+        json.dump(user_js, fw)
 
     def listdirs(path_dir):
         sys.stdout = open(path + hostname + "/struct_home_dir.txt", "w")
@@ -89,16 +86,16 @@ def info_units():
 # getting the name of processes currently running
 def info_proc():
     print("\n\t\t\t Process Information\n")
-    with open(path + hostname + "/process.yml", "w") as fw:
-        process_yml = {
+    with open(path + hostname + "/process.js", "w") as fw:
+        process_js = {
             "Process": []
         }
         for proc in psutil.process_iter(['name']):
-            process_yml["Process"].append( {
+            process_js["Process"].append( {
                     "Name" : proc.info['name']
                 }
                     )
-        yaml.dump(process_yml, fw, sort_keys=False, default_flow_style=False)
+        json.dump(process_js, fw)
             #print("[+] Process: ", proc.info['name'])
 
 # getting limits value
@@ -106,37 +103,37 @@ def info_limits():
     print("\n\t\t\t Limits Information\n")
     with open('/etc/security/limits.conf', 'r') as l:
         file_info = l.readlines()
-    with open(path + hostname + "/limit.yml", "w") as fw:
-        limit_yml = {
+    with open(path + hostname + "/limit.js", "w") as fw:
+        limit_js = {
             "limit": {},
             "limitd" : []
             }
-        limit_yml["limit"] = {"param" : [] }
+        limit_js["limit"] = {"param" : [] }
         for line in file_info:
             if not line.startswith("#") and not line.startswith(chr(10)):
                 line = line.replace((chr(10)), '')
-                limit_yml["limit"]["param"].append(line)              
+                limit_js["limit"]["param"].append(line)              
         s1='/etc/security/limits.d/'
         shet = 0
         if (len(os.listdir(s1)) > 0):
             for x in os.listdir(s1):
-                limit_yml["limitd"].append({"path" : s1 + x, "param" : [] })
+                limit_js["limitd"].append({"path" : s1 + x, "param" : [] })
                 with open(s1 + x, 'r') as k:
                     limit_info = k.readlines()
                     for line in limit_info:
                         if not line.startswith("#") and not line.startswith(chr(10)):
                             line = line.replace((chr(10)), '')
-                            limit_yml["limitd"][shet]["param"].append( line )
+                            limit_js["limitd"][shet]["param"].append( line )
                 shet = shet + 1
-        yaml.dump(limit_yml, fw, sort_keys=False, default_flow_style=False)
+        json.dump(limit_js, fw)
 
 # getting settings kernel value
 def info_kernel():
     print("\n\t\t\t Kernel Information\n")
     with open('/etc/sysctl.conf', 'r') as l:
         file_info = l.readlines()
-    with open(path + hostname + "/kernel.yml", "w") as fw:
-        kernel_yml = {
+    with open(path + hostname + "/kernel.js", "w") as fw:
+        kernel_js = {
             "kernel": {},
             "kerneld" : []
             }
@@ -146,7 +143,7 @@ def info_kernel():
                 line = line.replace((chr(10)), '')
                 paramList.append(line)
         if paramList:
-            kernel_yml["kernel"] = {"param" : paramList }
+            kernel_js["kernel"] = {"param" : paramList }
         s2='/etc/sysctl.d/'
         if (len(os.listdir(s2)) > 0):
             for x in os.listdir(s2):
@@ -159,53 +156,53 @@ def info_kernel():
                             line = line.replace((chr(10)), '')
                             paramdList.append( line )
                     if paramdList:
-                        kernel_yml["kerneld"].append({"path" : s2 + x, "param" : paramdList })
-        yaml.dump(kernel_yml, fw, sort_keys=False, default_flow_style=False)
+                        kernel_js["kerneld"].append({"path" : s2 + x, "param" : paramdList })
+        json.dump(kernel_js, fw)
 
 # getting settings fstab
 def info_mount():
     print("\n\t\t\t fstab Information\n")
     with open('/etc/fstab', 'r') as l:
         file_info = l.readlines()
-    with open(path + hostname + "/fstab.yml", "w") as fw:
-        mount_yml = {
+    with open(path + hostname + "/fstab.js", "w") as fw:
+        mount_js = {
             "Mount": []
         }
         for line in file_info:
             if not line.startswith("#") and not line.startswith(chr(10)):
                 line = line.replace((chr(10)), '')
-                mount_yml["Mount"].append( {
+                mount_js["Mount"].append( {
                     "param" : line
                 }
                     )
-        yaml.dump(mount_yml, fw, sort_keys=False, default_flow_style=False)
+        json.dump(mount_js, fw)
 
 # getting settings hosts
 def info_hosts():
     print("\n\t\t\t Hosts Information\n")
     with open('/etc/hosts', 'r') as l:
         file_info = l.readlines()
-    with open(path + hostname + "/hosts.yml", "w") as fw:
-        hosts_yml = {
+    with open(path + hostname + "/hosts.js", "w") as fw:
+        hosts_js = {
             "Hosts": []
         }
         for line in file_info:
             if not line.startswith("#") and not line.startswith(chr(10)):
                 line = line.replace((chr(10)), '')
                 line = line.replace((chr(9)), ' ')
-                hosts_yml["Hosts"].append( {
+                hosts_js["Hosts"].append( {
                     "param" : line
                 }
                     )
-        yaml.dump(hosts_yml, fw, sort_keys=False, default_flow_style=False)
+        json.dump(hosts_js, fw)
 
 # getting settings sudo
 def info_sudo():
     print("\n\t\t\t Sudo rights Information\n")
     with open('/etc/sudoers', 'r') as l:
         file_info = l.readlines()
-    with open(path + hostname + "/sudoers.yml", "w") as fw:
-        sudo_yml = {
+    with open(path + hostname + "/sudoers.js", "w") as fw:
+        sudo_js = {
             "Sudo": {},
             "Sudod" : []
             }
@@ -216,7 +213,7 @@ def info_sudo():
                 line = line.replace((chr(9)), ' ') # Заменяем \t  на ' '
                 paramList.append(line)
         if paramList:
-            sudo_yml["Sudo"] = {"param" : paramList }
+            sudo_js["Sudo"] = {"param" : paramList }
         s3='/etc/sudoers.d/'
         if (len(os.listdir(s3)) > 0):
             for x in os.listdir(s3):
@@ -230,14 +227,14 @@ def info_sudo():
                             line = line.replace((chr(9)), ' ') # Заменяем \t  на ' '
                             paramdList.append( line )
                     if paramdList:
-                        sudo_yml["Sudod"].append({"path" : s3 + x, "param" : paramdList })
-        yaml.dump(sudo_yml, fw, sort_keys=False, default_flow_style=False)
+                        sudo_js["Sudod"].append({"path" : s3 + x, "param" : paramdList })
+        json.dump(sudo_js, fw)
 
 # Displaying installed packages
 def info_packages():
     print("\n\t\t\t Packages Information\n")
-    with open(path + hostname + "/package.yml", "w") as fw:
-        package_yml = {
+    with open(path + hostname + "/package.js", "w") as fw:
+        package_js = {
                     "Package": []
         }
         if "Ubuntu" or "Debian" or "Astra" in platform.version():
@@ -246,10 +243,10 @@ def info_packages():
             str = s.split("\n")
             str = str[:-1]
             for i in str:
-                package_yml["Package"].append( {
+                package_js["Package"].append( {
                     "name" : i
                 } )
-            yaml.dump(package_yml, fw, sort_keys=False, default_flow_style=False)
+            json.dump(package_js, fw)
 
         if "el" in platform.version():
             package_install = subprocess.check_output("rpm -qa", shell=True)
@@ -258,10 +255,10 @@ def info_packages():
             str = s.split("\n")
             str = str[:-1]
             for i in str:
-                package_yml["Package"].append( {
+                package_js["Package"].append( {
                     "name" : i
                 } )
-            yaml.dump(package_yml, fw, sort_keys=False, default_flow_style=False)
+            json.dump(package_js, fw)
 
 # Collecting info about domain settings
 def info_domain():
