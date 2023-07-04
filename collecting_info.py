@@ -290,106 +290,7 @@ def info_domain():
         permited_group = subprocess.check_output("/opt/pbis/bin/config --detail RequireMembershipOf")
         print(permited_group)
 
-#def info_hardware():
-"""     # First We will print the basic system information
-    # using the platform module
-    sys.stdout = open(path + hostname + "/hardware.txt", "w")
-    def info_cpu():
-    # Displaying The CPU information
-        print("\n\t\t\t CPU Information\n")
 
-    # This code will print the number of CPU cores present
-        print("[+] Number of Physical cores :", psutil.cpu_count(logical=False))
-        print("[+] Number of Total cores :", psutil.cpu_count(logical=True))
-        print("\n")
-
-    # This will print the maximum, minimum and current CPU frequency
-        cpu_frequency = psutil.cpu_freq()
-        print(f"[+] Max Frequency : {cpu_frequency.max:.2f}Mhz")
-        print(f"[+] Min Frequency : {cpu_frequency.min:.2f}Mhz")
-        print(f"[+] Current Frequency : {cpu_frequency.current:.2f}Mhz")
-        print("\n")
-
-    # This will print the usage of CPU per core
-        for i, percentage in enumerate(psutil.cpu_percent(percpu=True, interval=1)):
-            print(f"[+] CPU Usage of Core {i} : {percentage}%")
-        print(f"[+] Total CPU Usage : {psutil.cpu_percent()}%")
-
-
-    # reading the cpuinfo file to print the name of
-    # the CPU present
-        with open("/proc/cpuinfo", "r")  as f:
-            file_info = f.readlines()
-
-        cpuinfo = [x.strip().split(":")[1] for x in file_info if "model name"  in x]
-        for index, item in enumerate(cpuinfo):
-            print("[+] Processor " + str(index) + " : " + item)
-
-    def info_mem():
-    # Using the virtual_memory() function it will return a tuple
-        virtual_memory = psutil.virtual_memory()
-        print("\n\t\t\t Memory Information\n")
-    #This will print the primary memory details
-        print("[+] Total Memory present :", virtual_memory.total)
-        print("[+] Total Memory Available :", virtual_memory.available)
-        print("[+] Total Memory Used :", virtual_memory.used)
-        print("[+] Percentage Used :", virtual_memory.percent, "%")
-        print("\n")
-
-    # This will print the swap memory details if available
-        swap = psutil.swap_memory()
-        print(f"[+] Total swap memory :{bytes_to_GB(swap.total)}")
-        print(f"[+] Free swap memory : {bytes_to_GB(swap.free)}")
-        print(f"[+] Used swap memory : {bytes_to_GB(swap.used)}")
-        print(f"[+] Percentage Used: {swap.percent}%")
-
-    # Gathering memory information from meminfo file
-        print("\nReading the /proc/meminfo file: \n")
-        with open("/proc/meminfo", "r") as f:
-            lines = f.readlines()
-
-        print("[+] " + lines[0].strip())
-        print("[+] " + lines[1].strip())
-
-    def bytes):
-            gb = bytes/(1024*1024*1024)
-            gb = round(gb, 2)
-            return gb
-
-    def info_disk():
-    # accessing all the disk partitions
-        disk_partitions = psutil.disk_partitions()
-        print("\n\t\t\t Disk Information\n")
-
-    # displaying the partition and usage information
-        for partition in disk_partitions:
-            print("[+] Partition Device : ", partition.device)
-            print("[+] File System : ", partition.fstype)
-            print("[+] Mountpoint : ", partition.mountpoint)
-
-            disk_usage = psutil.disk_usage(partition.mountpoint)
-            print("[+] Total Disk Space :", disk_usage.total)
-            print("[+] Free Disk Space :", disk_usage.free)
-            print("[+] Used Disk Space :", disk_usage.used)
-            print("[+] Percentage Used :", disk_usage.percent, "%")
-            print("\n")
-
-#    with open(path + hostname + "/hardware", "w") as fw:
-    print("\n\t\t\t Basic System Information\n")
-
-    print("[+] Architecture :", platform.architecture()[0])
-    print("[+] Machine :", platform.machine())
-    print("[+] Operating System Release :", platform.release())
-    print("[+] System Name :",platform.system())
-    print("[+] Operating System Version :", platform.version())
-    print("[+] Node: " + platform.node())
-    print("[+] Platform :", platform.platform())
-    print("[+] Processor :",platform.processor())
-    print("\n")
-    info_cpu()
-    info_mem()
-    info_disk()
- """
 def info_hardware():
     sys.stdout = open(path + hostname + "/hardware.txt", "w")
     def info_cpu():
@@ -443,13 +344,6 @@ def info_hardware():
             print("[+] Percentage Used : ", ''.join(map(chr,subprocess.check_output("lsblk -l -o NAME,SIZE,MOUNTPOINT,FSTYPE,FSAVAIL,FSUSED,FSUSE% | grep " + device + " | awk '{print $7}' | head -1", shell=True))))
             print("\n")
 
-   #def bytes_to_GB():
-            #bytes=''.join(map(chr, bytes))
-            #return bytes
-            #gb = bytes/(1024*1024*1024)
-            #gb = round(gb, 2)
-            #return gb
-
     print("\n\t\t\t Basic System Information\n")
 
     print("[+] Architecture :", platform.architecture()[0])
@@ -472,7 +366,7 @@ if args.units:
     info_units()
 if args.packages:
     info_packages()
-if args.proc: # Только принты
+if args.proc:
     info_proc()
 if args.limits:
     info_limits()
