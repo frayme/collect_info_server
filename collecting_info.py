@@ -1,6 +1,5 @@
 # importing the required modules
 import platform
-import psutil
 import os
 import socket
 import pwd
@@ -8,6 +7,7 @@ import argparse
 import subprocess
 import json
 import sys
+import re
 
 parser = argparse.ArgumentParser(description='This script collecting data about server')
 parser.add_argument('--users', action='store_true', help="Collecting informathion about users")
@@ -24,6 +24,7 @@ parser.add_argument('--domain_info', action='store_true', help="Collecting infor
 
 args = parser.parse_args()
 path="/home/user/"
+hostname = socket.gethostname()
 
 # getting users information
 def info_users():
@@ -83,20 +84,25 @@ def info_units():
     #for filename in os.listdir("/etc/systemd/system"):
     #    print("[+] Unit: ", filename)
 
-# getting the name of processes currently running
 def info_proc():
-    print("\n\t\t\t Process Information\n")
     with open(path + hostname + "/process.js", "w") as fw:
         process_js = {
             "Process": []
         }
-        for proc in psutil.process_iter(['name']):
-            process_js["Process"].append( {
-                    "Name" : proc.info['name']
+        for x in os.listdir("/proc"):
+            if re.match("^\d+$", x) is not None: # Регулярка проверяет, что имя состоит только из цифр
+                with open("/proc/" +x + "/status", "r") as l:
+                    file_info = l.readlines()
+                    for line in file_info:
+                        if line.startswith("Name"):
+                            line = line.replace((chr(10)), '')
+                            line = line.split("\t")
+                            print(line)
+                            process_js["Process"].append( {
+                                "Name" : line[1] 
                 }
                     )
         json.dump(process_js, fw)
-            #print("[+] Process: ", proc.info['name'])
 
 # getting limits value
 def info_limits():
@@ -263,13 +269,20 @@ def info_packages():
 # Collecting info about domain settings
 def info_domain():
     print("\n\t\t\t Domain settings Information\n")
-    for proc in psutil.process_iter(['name']):
-        if proc == "sssd":
-            domain_package = "sssd"
-            break;
-        else:
-            domain_package = "lwsmd"
-
+    domain_package = ""
+    for x in os.listdir("/proc"):
+            if re.match("^\d+$", x) is not None: # Регулярка проверяет, что имя состоит только из цифр
+                with open("/proc/" +x + "/status", "r") as l:
+                    file_info = l.readlines()
+                    for line in file_info:
+                        if line.startswith("Name"):
+                            line = line.replace((chr(10)), '')
+                            line = line.split("\t")
+                            if line.includes("sssd"):
+                                domain_package = "sssd"
+                                break;
+                            else:
+                                domain_package = "lwsmd"
     if domain_package == "sssd":
         permited_group = subprocess.check_output("realm list | grep permited_groups", shell=True)
         print(permited_group)
@@ -277,8 +290,8 @@ def info_domain():
         permited_group = subprocess.check_output("/opt/pbis/bin/config --detail RequireMembershipOf")
         print(permited_group)
 
-def info_hardware():
-    # First We will print the basic system information
+#def info_hardware():
+"""     # First We will print the basic system information
     # using the platform module
     sys.stdout = open(path + hostname + "/hardware.txt", "w")
     def info_cpu():
@@ -317,9 +330,9 @@ def info_hardware():
         virtual_memory = psutil.virtual_memory()
         print("\n\t\t\t Memory Information\n")
     #This will print the primary memory details
-        print("[+] Total Memory present :", bytes_to_GB(virtual_memory.total), "Gb")
-        print("[+] Total Memory Available :", bytes_to_GB(virtual_memory.available), "Gb")
-        print("[+] Total Memory Used :", bytes_to_GB(virtual_memory.used), "Gb")
+        print("[+] Total Memory present :", virtual_memory.total)
+        print("[+] Total Memory Available :", virtual_memory.available)
+        print("[+] Total Memory Used :", virtual_memory.used)
         print("[+] Percentage Used :", virtual_memory.percent, "%")
         print("\n")
 
@@ -338,7 +351,7 @@ def info_hardware():
         print("[+] " + lines[0].strip())
         print("[+] " + lines[1].strip())
 
-    def bytes_to_GB(bytes):
+    def bytes):
             gb = bytes/(1024*1024*1024)
             gb = round(gb, 2)
             return gb
@@ -355,9 +368,9 @@ def info_hardware():
             print("[+] Mountpoint : ", partition.mountpoint)
 
             disk_usage = psutil.disk_usage(partition.mountpoint)
-            print("[+] Total Disk Space :", bytes_to_GB(disk_usage.total), "GB")
-            print("[+] Free Disk Space :", bytes_to_GB(disk_usage.free), "GB")
-            print("[+] Used Disk Space :", bytes_to_GB(disk_usage.used), "GB")
+            print("[+] Total Disk Space :", disk_usage.total)
+            print("[+] Free Disk Space :", disk_usage.free)
+            print("[+] Used Disk Space :", disk_usage.used)
             print("[+] Percentage Used :", disk_usage.percent, "%")
             print("\n")
 
@@ -376,8 +389,82 @@ def info_hardware():
     info_cpu()
     info_mem()
     info_disk()
+ """
+def info_hardware():
+    sys.stdout = open(path + hostname + "/hardware.txt", "w")
+    def info_cpu():
+        # Displaying The CPU information
+        print("\n\t\t\t CPU Information\n")
 
-hostname = socket.gethostname()
+    # This code will print the number of CPU cores present
+        print("[+] Number of Physical cores :", ''.join(map(chr, subprocess.check_output("cat /proc/cpuinfo | grep processor | wc -l", shell=True))))
+        print("\n")
+        # This will print current CPU frequency
+        print("[+] Current Frequency :", ''.join(map(chr, subprocess.check_output("cat /proc/cpuinfo | grep Hz | tail -1 | awk '{print $4 $2}'", shell=True))))
+        print("\n")
+        with open("/proc/cpuinfo", "r")  as f:
+            file_info = f.readlines()
+
+        cpuinfo = [x.strip().split(":")[1] for x in file_info if "model name"  in x]
+        for index, item in enumerate(cpuinfo):
+            print("[+] Processor " + str(index) + " : " + item)
+
+    def info_mem():
+        print("\n\t\t\t Memory Information\n")
+    #This will print the primary memory details
+        print("[+] Total Memory present :", ''.join(map(chr, subprocess.check_output("cat /proc/meminfo | grep MemTotal | awk '{print $2}'", shell=True))))
+        print("[+] Total Memory Available :", ''.join(map(chr, subprocess.check_output("grep MemAvailable /proc/meminfo | awk '{print $2}'", shell=True))))
+        print("[+] Total Memory Used :", ''.join(map(chr, subprocess.check_output("free | awk '{print $3}' | head -2 | tail -1", shell=True))))
+        print("\n")
+        # This will print the swap memory details if available
+        print(f"[+] Total swap memory :",''.join(map(chr, subprocess.check_output("grep SwapTotal /proc/meminfo | awk '{print $2}'", shell=True))))
+        print(f"[+] Free swap memory :",''.join(map(chr, subprocess.check_output("grep SwapFree /proc/meminfo | awk '{print $2}'", shell=True))))
+        print(f"[+] Used swap memory :",''.join(map(chr, subprocess.check_output("free | awk '{print $3}' | tail -1", shell=True))))
+
+    def info_disk():
+    # accessing all the disk partitions
+        print("\n\t\t\t Disk Information\n")
+
+    # displaying the partition and usage information
+
+        disk_list = subprocess.check_output("lsblk -l -o NAME | tail -n+2", shell = True)
+        s = ''.join(map(chr, disk_list))
+        s = s.split("\n")[:-1]
+        print(s)
+
+        for device in s:
+            print("[+] Partition Device : ", ''.join(map(chr, subprocess.check_output("lsblk -l -o NAME,SIZE,MOUNTPOINT,FSTYPE,FSAVAIL,FSUSED,FSUSE% | grep " + device + " | awk '{print $1}'| head -1", shell=True))))
+            print("[+] File System : ", ''.join(map(chr, subprocess.check_output("lsblk -l -o NAME,SIZE,MOUNTPOINT,FSTYPE,FSAVAIL,FSUSED,FSUSE% | grep " + device + " | awk '{print $4}' | head -1", shell=True))))
+            print("[+] Mountpoint : ", ''.join(map(chr, subprocess.check_output("lsblk -l -o NAME,SIZE,MOUNTPOINT,FSTYPE,FSAVAIL,FSUSED,FSUSE% | grep " + device + " | awk '{print $3}' | head -1", shell=True))))
+
+            print("[+] Total Disk Space : ", ''.join(map(chr, subprocess.check_output("lsblk -l -o NAME,SIZE,MOUNTPOINT,FSTYPE,FSAVAIL,FSUSED,FSUSE% | grep " + device + " | awk '{print $2}' | head -1", shell=True))))
+            print("[+] Free Disk Space : ", ''.join(map(chr,subprocess.check_output("lsblk -l -o NAME,SIZE,MOUNTPOINT,FSTYPE,FSAVAIL,FSUSED,FSUSE% | grep " + device + " | awk '{print $5}' | head -1", shell=True))))
+            print("[+] Used Disk Space : ", ''.join(map(chr,subprocess.check_output("lsblk -l -o NAME,SIZE,MOUNTPOINT,FSTYPE,FSAVAIL,FSUSED,FSUSE% | grep " + device + " | awk '{print $6}' | head -1", shell=True))))
+            print("[+] Percentage Used : ", ''.join(map(chr,subprocess.check_output("lsblk -l -o NAME,SIZE,MOUNTPOINT,FSTYPE,FSAVAIL,FSUSED,FSUSE% | grep " + device + " | awk '{print $7}' | head -1", shell=True))))
+            print("\n")
+
+   #def bytes_to_GB():
+            #bytes=''.join(map(chr, bytes))
+            #return bytes
+            #gb = bytes/(1024*1024*1024)
+            #gb = round(gb, 2)
+            #return gb
+
+    print("\n\t\t\t Basic System Information\n")
+
+    print("[+] Architecture :", platform.architecture()[0])
+    print("[+] Machine :", platform.machine())
+    print("[+] Operating System Release :", platform.release())
+    print("[+] System Name :",platform.system())
+    print("[+] Operating System Version :", platform.version())
+    print("[+] Node: " + platform.node())
+    print("[+] Platform :", platform.platform())
+    print("[+] Processor :",platform.processor())
+    print("\n")
+    info_cpu()
+    info_mem()
+    info_disk()
+
 os.system("mkdir -p /home/user/" + hostname)
 if args.users:
     info_users()
